@@ -84,12 +84,13 @@ class Spell_Checker:
                               Defaults to False
             """
             self.n = n
-            self.model_dict = None  # a dictionary of the form {ngram:count}, holding counts of all ngrams in the specified text.
-            # NOTE: This dictionary format is inefficient and insufficient (why?), therefore  you can (even encouraged to)
-            # use a better data structure.
-            # However, you are requested to support this format for two reasons:
-            # (1) It is very straight forward and force you to understand the logic behind LM, and
-            # (2) It serves as the normal form for the LM so we can call get_model_dictionary() and peek into you model.
+            self.chars = chars
+            self.model_dict = collections.defaultdict(int)  # a dictionary of the form {ngram:count}, holding counts of all ngrams
+            # in the specified text.
+            # NOTE: This dictionary format is inefficient and insufficient (why?), therefore  you can (even
+            # encouraged to) use a better data structure. However, you are requested to support this format for two
+            # reasons: (1) It is very straight forward and force you to understand the logic behind LM, and (2) It
+            # serves as the normal form for the LM so we can call get_model_dictionary() and peek into you model.
 
         def build_model(self, text):  # should be called build_model
             """populates the instance variable model_dict.
@@ -97,6 +98,23 @@ class Spell_Checker:
                 Args:
                     text (str): the text to construct the model from.
             """
+            if self.chars:
+                # split text into individual characters
+                words = list(text)
+            else:
+                # split text into words
+                words = text.split()
+
+            # Add start and end tokens to the list of words to ensure that every n-gram has a full context of n
+            # tokens. For example, in a trigram model (n=3), the first two words do not have a full context of 3
+            # words, so we add 2 start tokens to the beginning of the list. Similarly, we add 1 end token to ensure
+            # that every n-gram has a full context of 3 words.
+            words = ['<s>'] * (self.n - 1) + words + ['</s>']
+
+            # construct ngrams and count occurrences
+            for i in range(len(words) - self.n + 1):
+                ngram = tuple(words[i:i + self.n])
+                self.model_dict[ngram] += 1
 
         def get_model_dictionary(self):
             """Returns the dictionary class object
