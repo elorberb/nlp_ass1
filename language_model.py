@@ -20,6 +20,7 @@ class Spell_Checker:
             lm: a language model object. Defaults to None.
         """
         self.lm = lm
+        self.error_tables = None
 
     def add_language_model(self, lm):
         """Adds the specified language model as an instance variable.
@@ -28,6 +29,7 @@ class Spell_Checker:
             Args:
                 lm: a Spell_Checker.Language_Model object
         """
+        self.lm = lm
 
     def add_error_tables(self, error_tables):
         """ Adds the specified dictionary of error tables as an instance variable.
@@ -38,6 +40,7 @@ class Spell_Checker:
             of the provided confusion matrices:
             https://www.dropbox.com/s/ic40soda29emt4a/spelling_confusion_matrices.py?dl=0
         """
+        self.error_tables = error_tables
 
     def evaluate_text(self, text):
         """Returns the log-likelihood of the specified text given the language
@@ -160,4 +163,4 @@ def who_am_i():  # this is not a class method
     """Returns a ductionary with your name, id number and email. keys=['name', 'id','email']
         Make sure you return your own info!
     """
-    return {'name': 'John Doe', 'id': '012345678', 'email': 'jdoe@post.bgu.ac.il'}
+    return {'name': 'Etay Lorberboym', 'id': '314977596', 'email': 'etaylor@post.bgu.ac.il'}
