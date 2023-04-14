@@ -157,6 +157,12 @@ def normalize_text(text):
       Returns:
         string. the normalized text.
     """
+    # Convert text to lowercase and remove leading and trailing whitespaces
+    text = text.lower().strip()
+
+    # Replace multiple consecutive whitespaces with a single space
+    text = re.sub(r'\s+', ' ', text)
+    return text
 
 
 def who_am_i():  # this is not a class method
