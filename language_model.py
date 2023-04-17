@@ -56,6 +56,11 @@ class Spell_Checker:
            Returns:
                Float. The float should reflect the (log) probability.
         """
+        if self.lm:
+            return self.lm.evaluate_text(text, smooth=True)
+        else:
+            raise ValueError("Language model not set for this Spell_Checker instance")
+
 
     def spell_check(self, text, alpha):
         """ Returns the most probable fix for the specified text. Use a simple
