@@ -3,10 +3,40 @@ from language_model import *
 
 
 class MyTestCase(unittest.TestCase):
+
+    def setUp(self):
+        # Open the file and read its contents
+        with open('corpus/the_raven.txt', 'r', encoding='utf-8') as file:
+            self.the_raven = file.read()
+
+        with open('corpus/big.txt', 'r', encoding='utf-8') as file:
+            self.big = file.read()
+
     def test_normalize_text(self):
-        self.assertEqual(normalize_text("HELLO"), "hello")
-        self.assertEqual(normalize_text("  hello  "), "hello")
-        self.assertEqual(normalize_text("hello    world"), "hello world")
+        # Test lowercase
+        input_text = "This is a Sample TeXT."
+        expected_output = "sample text"
+        self.assertEqual(normalize_text(input_text), expected_output)
+
+        # Test remove non-alphabetic
+        input_text = "This is a sample text with 123 numbers and !@# special characters."
+        expected_output = "sample text number special character"
+        self.assertEqual(normalize_text(input_text), expected_output)
+
+        # Test remove stopwords
+        input_text = "This is a sample text with some stopwords."
+        expected_output = "sample text stopwords"
+        self.assertEqual(normalize_text(input_text), expected_output)
+
+        # Test lemmatization
+        input_text = "This text contains some lemmatizable words."
+        expected_output = "text contains lemmatizable word"
+        self.assertEqual(normalize_text(input_text), expected_output)
+
+        # Test empty input
+        input_text = ""
+        expected_output = ""
+        self.assertEqual(normalize_text(input_text), expected_output)
 
     def test_build_model_word(self):
         text = "The quick brown fox jumps over the lazy dog"
@@ -41,6 +71,49 @@ class MyTestCase(unittest.TestCase):
         lm = sc.Language_Model(chars=True)
         lm.build_model(text)
         self.assertEqual(lm.get_model_dictionary(), expected_dict)
+
+    def test_generate(self):
+        sc = Spell_Checker()
+        lm = sc.Language_Model()
+        lm.build_model(self.the_raven)
+        print(lm.generate(n=100))
+
+    def test_evaluate_text(self):
+        text = 'The quick brown fox jumps over the lazy dog.'
+        sc = Spell_Checker()
+        lm = sc.Language_Model()
+        lm.build_model(text)
+
+        # Test the evaluation of a text with known log probability
+        text = 'The quick brown fox jumps over the lazy dog.'
+        expected_log_prob = -21.456879988908563
+        log_prob = lm.evaluate_text(text)
+        self.assertAlmostEqual(log_prob, expected_log_prob, places=6)
+
+        # Test the evaluation of a text with unknown words
+        text = 'The fast brown cat jumps over the lazy dog.'
+        expected_log_prob = -25.13566585240802
+        log_prob = lm.evaluate_text(text)
+        self.assertAlmostEqual(log_prob, expected_log_prob, places=6)
+
+    def test_smooth(self):
+        expected_dict = {
+            ('the', 'quick', 'brown'): 1,
+            ('quick', 'brown', 'fox'): 2,
+            ('brown', 'fox', 'jumps'): 1,
+            ('fox', 'jumps', 'over'): 1,
+            ('jumps', 'over', 'the'): 1,
+            ('over', 'the', 'lazy'): 2,
+            ('the', 'lazy', 'dog'): 1
+        }
+        sc = Spell_Checker()
+        lm = sc.Language_Model()
+        lm.model_dict = expected_dict
+        prob = lm.smooth(('the', 'quick', 'brown'))
+        self.assertAlmostEqual(prob, 2/16, places=3)
+
+        prob = lm.smooth(('quick', 'brown', 'fox'))
+        self.assertAlmostEqual(prob, 3/16, places=3)
 
 
 if __name__ == '__main__':

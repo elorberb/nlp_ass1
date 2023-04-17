@@ -4,6 +4,10 @@ import random
 import math
 import collections
 import nltk
+nltk.download('wordnet')
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 
 
 class Spell_Checker:
@@ -141,17 +145,82 @@ class Spell_Checker:
                     String. The generated text.
 
             """
+            if context is None:
+                # sample a context from the model distribution
+                contexts = [ngram[:-1] for ngram in self.model_dict.keys()]
+                context = random.choice(contexts)
+            else:
+                context = context.split() if not self.chars else list(context)
 
-        def evaluate_text(self, text):
+            # add start token to the context
+            context = ['<s>'] * (self.n - len(context)) + list(context)
+            context = tuple(context[-(self.n - 1):])  # convert context to a tuple
+
+            # generate the output sequence
+            output = list(context)
+            while len(output) < n:
+                # get the counts of all possible next words given the current context
+                counts = collections.defaultdict(int)
+                for ngram, count in self.model_dict.items():
+                    if ngram[:-1] == context:
+                        counts[ngram[-1]] += count
+
+                if counts:
+                    # choose the word with the highest count (MLE)
+                    next_word = max(counts, key=counts.get)
+                else:
+                    # if no next words are available, stop generating text
+                    break
+
+                output.append(next_word)
+                context = context[1:] + (next_word,)
+
+            # return the generated text as a string
+            return ' '.join(output)
+
+        def evaluate_text(self, text, smooth=False):
             """Returns the log-likelihood of the specified text to be a product of the model.
                Laplace smoothing should be applied if necessary.
 
                Args:
                    text (str): Text to evaluate.
+                   smooth: True iff Laplace smoothing should be applied.
 
                Returns:
                    Float. The float should reflect the (log) probability.
             """
+            # Initialize log probability to 0
+            log_prob = 0
+
+            # Split the text into individual words
+            words = text.split()
+
+            # Pad the beginning and end of the text with special start and end tokens
+            words = ['<s>'] * (self.n - 1) + words + ['</s>']
+
+            total_count = sum(self.model_dict.values())
+
+            # Iterate over each ngram in the text
+            for i in range(self.n - 1, len(words)):
+                ngram = tuple(words[i - self.n + 1:i + 1])
+
+                # Check if the vocabulary size is small enough to require smoothing
+                if smooth or len(self.model_dict) < 10000:
+                    # Use Laplace smoothing to calculate the probability of the ngram
+                    prob = self.smooth(ngram)
+                else:
+                    # Calculate the probability of the ngram without smoothing
+                    prob = self.model_dict.get(ngram, 0) / total_count
+
+                # Take the logarithm of the probability and add it to the log probability
+                try:
+                    log_prob += math.log(prob)
+                except ValueError:
+                    # Handle the case where the probability is 0 and the logarithm is undefined
+                    log_prob += 0
+
+            # Return the log probability
+            return log_prob
 
         def smooth(self, ngram):
             """Returns the smoothed (Laplace) probability of the specified ngram.
@@ -162,6 +231,16 @@ class Spell_Checker:
                 Returns:
                     float. The smoothed probability.
             """
+            # Get the count of the ngram in the model
+            count = self.model_dict.get(ngram, 0)
+
+            # Get the total count of all ngrams in the model
+            total_count = sum(self.model_dict.values())
+            # Calculate the smoothed probability using Laplace smoothing
+            # Add 1 to the count of the ngram and add the size of the vocabulary
+            prob = (count + 1) / (total_count + len(self.model_dict))
+
+            return prob
 
 
 def normalize_text(text):
@@ -175,12 +254,27 @@ def normalize_text(text):
       Returns:
         string. the normalized text.
     """
-    # Convert text to lowercase and remove leading and trailing whitespaces
-    text = text.lower().strip()
+    # Convert to lowercase
+    text = text.lower()
 
-    # Replace multiple consecutive whitespaces with a single space
-    text = re.sub(r'\s+', ' ', text)
-    return text
+    # Remove non-alphabetic characters
+    text = re.sub('[^A-Za-z]', ' ', text)
+
+    # Tokenize text into individual words
+    words = word_tokenize(text)
+
+    # Remove stop words
+    stop_words = set(stopwords.words('english'))
+    words = [word for word in words if word not in stop_words]
+
+    # Lemmatize words
+    lemmatizer = WordNetLemmatizer()
+    words = [lemmatizer.lemmatize(word) for word in words]
+
+    # Rejoin words into a normalized string
+    normalized_text = ' '.join(words)
+
+    return normalized_text
 
 
 def who_am_i():  # this is not a class method
