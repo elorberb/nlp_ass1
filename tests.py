@@ -55,6 +55,19 @@ class MyTestCase(unittest.TestCase):
         lm.build_model(text)
         self.assertEqual(lm.get_model_dictionary(), expected_dict)
 
+    def test_check_for_oov(self):
+        sc = Spell_Checker()
+        lm = sc.Language_Model()
+        lm.model_dict = {('the', 'cat', 'sat'): 2, ('cat', 'sat', 'on'): 1, ('sat', 'on', 'the'): 1}
+
+        # Test with input that contains no OOV words
+        words1 = ['the', 'cat', 'sat', 'on', 'the']
+        self.assertFalse(lm._check_for_oov(words1))
+
+        # Test with input that contains OOV words
+        words2 = ['the', 'dog', 'ran', 'on', 'the', 'mat']
+        self.assertTrue(lm._check_for_oov(words2))
+
     def test_build_model_chars(self):
         text = "abbcabbcaaa"
         expected_dict = {('<s>', '<s>', 'a'): 1,

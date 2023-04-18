@@ -61,7 +61,6 @@ class Spell_Checker:
         else:
             raise ValueError("Language model not set for this Spell_Checker instance")
 
-
     def spell_check(self, text, alpha):
         """ Returns the most probable fix for the specified text. Use a simple
             noisy channel model if the number of tokens in the specified text is
@@ -183,7 +182,26 @@ class Spell_Checker:
             # return the generated text as a string
             return ' '.join(output)
 
-        def evaluate_text(self, text, smooth=False):
+        def _check_for_oov(self, words):
+            """Checks if any word in the given list is an out-of-vocabulary (OOV) word.
+                If we have oov words, we need to apply smoothing to the language model.
+
+            Args:
+                words (list[str]): List of words to check.
+
+            Returns:
+                bool. True if any word in the list is an OOV word, False otherwise.
+            """
+            # Create a list of n-grams from the list of words
+            ngrams = [tuple(words[i:i + self.n]) for i in range(len(words) - self.n + 1)]
+
+            # Check if any n-gram is an OOV word
+            for ngram in ngrams:
+                if ngram not in self.model_dict:
+                    return True
+            return False
+
+        def evaluate_text(self, text):
             """Returns the log-likelihood of the specified text to be a product of the model.
                Laplace smoothing should be applied if necessary.
 
@@ -205,12 +223,15 @@ class Spell_Checker:
 
             total_count = sum(self.model_dict.values())
 
+            if self._check_for_oov(words):
+                smooth = True
+
             # Iterate over each ngram in the text
             for i in range(self.n - 1, len(words)):
                 ngram = tuple(words[i - self.n + 1:i + 1])
 
                 # Check if the vocabulary size is small enough to require smoothing
-                if smooth or len(self.model_dict) < 10000:
+                if smooth:
                     # Use Laplace smoothing to calculate the probability of the ngram
                     prob = self.smooth(ngram)
                 else:
