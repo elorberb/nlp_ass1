@@ -8,6 +8,7 @@ nltk.download('wordnet')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
+from constants import *
 
 
 class Spell_Checker:
@@ -207,13 +208,13 @@ class Spell_Checker:
 
                Args:
                    text (str): Text to evaluate.
-                   smooth: True iff Laplace smoothing should be applied.
 
                Returns:
                    Float. The float should reflect the (log) probability.
             """
-            # Initialize log probability to 0
+            # Initialize log probability to 0 and smooth False
             log_prob = 0
+            smooth = False
 
             # Split the text into individual words
             words = text.split()
@@ -308,3 +309,4 @@ def who_am_i():  # this is not a class method
         Make sure you return your own info!
     """
     return {'name': 'Etay Lorberboym', 'id': '314977596', 'email': 'etaylor@post.bgu.ac.il'}
+
