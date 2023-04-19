@@ -4,6 +4,7 @@ import random
 import math
 import collections
 import nltk
+
 nltk.download('wordnet')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -94,7 +95,8 @@ class Spell_Checker:
             """
             self.n = n
             self.chars = chars
-            self.model_dict = collections.defaultdict(int) # a dictionary of the form {ngram:count}, holding counts of all ngrams
+            self.model_dict = collections.defaultdict(
+                int)  # a dictionary of the form {ngram:count}, holding counts of all ngrams
             self.token_frequency = collections.defaultdict(int)
             self.total_token_count = 0
             # in the specified text.
@@ -200,19 +202,22 @@ class Spell_Checker:
                 context = context[1:] + (next_word,)
 
             # return the generated text as a string
-            return ' '.join(output)
+            if self.chars:
+                return ''.join(output)
+            else:
+                return ' '.join(output)
 
-        def _check_for_oov(self, words):
+        def _check_for_oov(self, tokens):
             """Checks if any word in the given list is an out-of-vocabulary (OOV) word.
                 If we have oov words, we need to apply smoothing to the language model.
 
             Args:
-                words (list[str]): List of words to check.
+                tokens (list[str]): List of tokens to check.
 
             Returns:
                 bool. True if any word in the list is an OOV word, False otherwise.
             """
-            return not all(token in self.token_frequency.keys() for token in words)
+            return not all(token in self.token_frequency.keys() for token in tokens)
 
         def evaluate_text(self, text):
             """Returns the log-likelihood of the specified text to be a product of the model.
@@ -229,15 +234,16 @@ class Spell_Checker:
             smooth = False
 
             # Split the text into individual words
-            words = text.split()
-
-            # Pad the beginning and end of the text with special start and end tokens
-            words = ['<s>'] * (self.n - 1) + words + ['</s>']
-
-            total_count = sum(self.model_dict.values())
+            if self.chars:
+                words = list(text)
+            else:
+                words = text.split()
 
             if self._check_for_oov(words):
                 smooth = True
+
+            # Pad the beginning and end of the text with special start and end tokens
+            words = ['<s>'] * (self.n - 1) + words + ['</s>']
 
             # Iterate over each ngram in the text
             for i in range(self.n - 1, len(words)):
@@ -249,7 +255,7 @@ class Spell_Checker:
                     prob = self.smooth(ngram)
                 else:
                     # Calculate the probability of the ngram without smoothing
-                    prob = self.model_dict.get(ngram, 0) / total_count
+                    prob = self.model_dict.get(ngram, 0) / self.total_token_count
 
                 # Take the logarithm of the probability and add it to the log probability
                 try:
@@ -273,11 +279,9 @@ class Spell_Checker:
             # Get the count of the ngram in the model
             count = self.model_dict.get(ngram, 0)
 
-            # Get the total count of all ngrams in the model
-            total_count = sum(self.model_dict.values())
             # Calculate the smoothed probability using Laplace smoothing
             # Add 1 to the count of the ngram and add the size of the vocabulary
-            prob = (count + 1) / (total_count + len(self.model_dict))
+            prob = (count + 1) / (self.total_token_count + len(self.model_dict))
 
             return prob
 
@@ -321,4 +325,3 @@ def who_am_i():  # this is not a class method
         Make sure you return your own info!
     """
     return {'name': 'Etay Lorberboym', 'id': '314977596', 'email': 'etaylor@post.bgu.ac.il'}
-
