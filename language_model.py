@@ -212,14 +212,7 @@ class Spell_Checker:
             Returns:
                 bool. True if any word in the list is an OOV word, False otherwise.
             """
-            # Create a list of n-grams from the list of words
-            ngrams = [tuple(words[i:i + self.n]) for i in range(len(words) - self.n + 1)]
-
-            # Check if any n-gram is an OOV word
-            for ngram in ngrams:
-                if ngram not in self.model_dict:
-                    return True
-            return False
+            return not all(token in self.token_frequency.keys() for token in words)
 
         def evaluate_text(self, text):
             """Returns the log-likelihood of the specified text to be a product of the model.

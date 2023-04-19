@@ -64,7 +64,8 @@ class MyTestCase(unittest.TestCase):
     def test_check_for_oov(self):
         sc = Spell_Checker()
         lm = sc.Language_Model()
-        lm.model_dict = {('the', 'cat', 'sat'): 2, ('cat', 'sat', 'on'): 1, ('sat', 'on', 'the'): 1}
+        text = "the cat sat on the mat"
+        lm.build_model(text)
 
         # Test with input that contains no OOV words
         words1 = ['the', 'cat', 'sat', 'on', 'the']
