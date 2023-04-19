@@ -94,7 +94,9 @@ class Spell_Checker:
             """
             self.n = n
             self.chars = chars
-            self.model_dict = collections.defaultdict(int)  # a dictionary of the form {ngram:count}, holding counts of all ngrams
+            self.model_dict = collections.defaultdict(int) # a dictionary of the form {ngram:count}, holding counts of all ngrams
+            self.token_frequency = collections.defaultdict(int)
+            self.total_token_count = 0
             # in the specified text.
             # NOTE: This dictionary format is inefficient and insufficient (why?), therefore  you can (even
             # encouraged to) use a better data structure. However, you are requested to support this format for two
@@ -114,6 +116,13 @@ class Spell_Checker:
                 # split text into words
                 words = text.split()
 
+            # construct the token frequencies dictionary
+            for word in words:
+                self.token_frequency[word] += 1
+
+            # calculate total_token_count
+            self.total_token_count = sum(self.token_frequency.values())
+
             # Add start and end tokens to the list of words to ensure that every n-gram has a full context of n
             # tokens. For example, in a trigram model (n=3), the first two words do not have a full context of 3
             # words, so we add 2 start tokens to the beginning of the list. Similarly, we add 1 end token to ensure
@@ -124,6 +133,16 @@ class Spell_Checker:
             for i in range(len(words) - self.n + 1):
                 ngram = tuple(words[i:i + self.n])
                 self.model_dict[ngram] += 1
+
+        def get_token_frequency(self):
+            """Returns the dictionary class object
+            """
+            return self.token_frequency
+
+        def get_total_token_count(self):
+            """Returns the dictionary class object
+            """
+            return self.total_token_count
 
         def get_model_dictionary(self):
             """Returns the dictionary class object

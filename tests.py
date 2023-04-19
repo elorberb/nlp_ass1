@@ -50,10 +50,16 @@ class MyTestCase(unittest.TestCase):
                          ('over', 'the', 'lazy'): 1,
                          ('the', 'lazy', 'dog'): 1,
                          ('lazy', 'dog', '</s>'): 1}
+        expected_token_frequency = {'The': 1, 'quick': 1, 'brown': 1, 'fox': 1, 'jumps': 1, 'over': 1,
+                                    'the': 1, 'lazy': 1, 'dog': 1}
+
+        expected_total_token_count = 9
         sc = Spell_Checker()
         lm = sc.Language_Model()
         lm.build_model(text)
         self.assertEqual(lm.get_model_dictionary(), expected_dict)
+        self.assertEqual(lm.get_total_token_count(), expected_total_token_count)
+        self.assertEqual(lm.get_token_frequency(), expected_token_frequency)
 
     def test_check_for_oov(self):
         sc = Spell_Checker()
@@ -80,10 +86,16 @@ class MyTestCase(unittest.TestCase):
                          ('a', 'a', 'a'): 1,
                          ('a', 'a', '</s>'): 1,
                          }
+        expected_token_frequency = {'a': 5, 'b': 4, 'c': 2}
+        expected_total_token_count = len(text)
+
         sc = Spell_Checker()
         lm = sc.Language_Model(chars=True)
         lm.build_model(text)
+
         self.assertEqual(lm.get_model_dictionary(), expected_dict)
+        self.assertEqual(lm.token_frequency, expected_token_frequency)
+        self.assertEqual(lm.total_token_count, expected_total_token_count)
 
     def test_generate(self):
         sc = Spell_Checker()
