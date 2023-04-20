@@ -59,9 +59,9 @@ class MyTestCase(unittest.TestCase):
 
         expected_total_token_count = 9
         self.lm.build_model(text)
-        self.assertEqual(lm.get_model_dictionary(), expected_dict)
-        self.assertEqual(lm.get_total_token_count(), expected_total_token_count)
-        self.assertEqual(lm.get_token_frequency(), expected_token_frequency)
+        self.assertEqual(self.lm.get_model_dictionary(), expected_dict)
+        self.assertEqual(self.lm.get_total_token_count(), expected_total_token_count)
+        self.assertEqual(self.lm.get_token_frequency(), expected_token_frequency)
 
     def test_check_for_oov(self):
         text = "the cat sat on the mat"
@@ -69,11 +69,11 @@ class MyTestCase(unittest.TestCase):
 
         # Test with input that contains no OOV words
         words1 = ['the', 'cat', 'sat', 'on', 'the']
-        self.assertFalse(lm._check_for_oov(words1))
+        self.assertFalse(self.lm._check_for_oov(words1))
 
         # Test with input that contains OOV words
         words2 = ['the', 'dog', 'ran', 'on', 'the', 'mat']
-        self.assertTrue(lm._check_for_oov(words2))
+        self.assertTrue(self.lm._check_for_oov(words2))
 
     def test_build_model_chars(self):
         text = "abbcabbcaaa"
@@ -91,9 +91,9 @@ class MyTestCase(unittest.TestCase):
         expected_total_token_count = len(text)
         self.lm_chars.build_model(text)
 
-        self.assertEqual(lm.get_model_dictionary(), expected_dict)
-        self.assertEqual(lm.token_frequency, expected_token_frequency)
-        self.assertEqual(lm.total_token_count, expected_total_token_count)
+        self.assertEqual(self.lm_chars.get_model_dictionary(), expected_dict)
+        self.assertEqual(self.lm_chars.token_frequency, expected_token_frequency)
+        self.assertEqual(self.lm_chars.total_token_count, expected_total_token_count)
 
     def test_generate(self):
         self.lm.build_model(self.the_raven)
@@ -164,6 +164,7 @@ class MyTestCase(unittest.TestCase):
         }
 
         self.lm.model_dict = expected_dict
+        self.lm.total_token_count = 9
         prob = self.lm.smooth(('the', 'quick', 'brown'))
         self.assertAlmostEqual(prob, 2 / 16, places=3)
 
