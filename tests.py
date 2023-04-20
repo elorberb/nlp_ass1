@@ -171,34 +171,6 @@ class MyTestCase(unittest.TestCase):
         prob = self.lm.smooth(('quick', 'brown', 'fox'))
         self.assertAlmostEqual(prob, 3 / 16, places=3)
 
-    def test_insertion_candidates(self):
-        token = "a"
-        expected_candidates = {"aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj",
-                               "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "at",
-                               "au", "av", "aw", "ax", "ay", "az",
-                               "ba", "ca", "da", "ea", "fa", "ga", "ha", "ia", "ja", "ka",
-                               "la", "ma", "na", "oa", "pa", "qa", "ra", "sa", "ta", "ua",
-                               "va", "wa", "xa", "ya", "za"}
-        self.assertEqual(self.sc._insertion_candidates(token), expected_candidates)
-
-    def test_deletion_candidates(self):
-        token = "abc"
-        expected_candidates = {"bc", "ac", "ab"}
-        self.assertEqual(self.sc._deletion_candidates(token), expected_candidates)
-
-    def test_substitution_candidates(self):
-        # Define the input token and expected output
-        token = 'a'
-        expected_candidates = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-                               's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
-        self.assertEqual(self.sc._substitution_candidates(token), expected_candidates)
-
-    def test_transposition_candidates(self):
-        # Define the input token and expected output
-        token = 'abcd'
-        expected_candidates = {'bacd', 'acbd', 'abdc'}
-        self.assertEqual(self.sc._transposition_candidates(token), expected_candidates)
-
     def test_generate_candidates(self):
         # Define the input token
         input_token = 'abc'

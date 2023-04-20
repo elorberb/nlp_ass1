@@ -139,28 +139,14 @@ class Spell_Checker:
     @staticmethod
     def _generate_one_edit_candidates(token):
         """Generate candidate words with a single edit operation."""
-        candidates = set()
-        candidates.update(Spell_Checker._insertion_candidates(token))
-        candidates.update(Spell_Checker._deletion_candidates(token))
-        candidates.update(Spell_Checker._substitution_candidates(token))
-        candidates.update(Spell_Checker._transposition_candidates(token))
-        return candidates
+        letters = 'abcdefghijklmnopqrstuvwxyz'
+        splits = [(token[:i], token[i:]) for i in range(len(token) + 1)]
+        deletes = [L + R[1:] for L, R in splits if R]
+        transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R) > 1]
+        replaces = [L + c + R[1:] for L, R in splits if R for c in letters]
+        inserts = [L + c + R for L, R in splits for c in letters]
+        return set(deletes + transposes + replaces + inserts)
 
-    @staticmethod
-    def _insertion_candidates(token):
-        return {token[:i] + c + token[i:] for i in range(len(token) + 1) for c in ALPHABET}
-
-    @staticmethod
-    def _deletion_candidates(token):
-        return {token[:i] + token[i + 1:] for i in range(len(token))}
-
-    @staticmethod
-    def _substitution_candidates(token):
-        return {token[:i] + c + token[i + 1:] for i in range(len(token)) for c in ALPHABET}
-
-    @staticmethod
-    def _transposition_candidates(token):
-        return {token[:i] + token[i + 1] + token[i] + token[i + 2:] for i in range(len(token) - 1)}
 
     def spell_check(self, text, alpha):
         """ Returns the most probable fix for the specified text. Use a simple
