@@ -67,7 +67,7 @@ class Spell_Checker:
     def _is_substitution(candidate, token):
         diff_positions = [i for i in range(len(token)) if token[i] != candidate[i]]
         if len(diff_positions) == 1:
-            return True, (token[diff_positions[0]], candidate[diff_positions[0]])
+            return True, token[diff_positions[0]] + candidate[diff_positions[0]]
         return False, None
 
     @staticmethod
@@ -75,21 +75,21 @@ class Spell_Checker:
         diff_positions = [i for i in range(len(token)) if token[i] != candidate[i]]
         if len(diff_positions) == 2 and token[diff_positions[0]] == candidate[diff_positions[1]] and token[
             diff_positions[1]] == candidate[diff_positions[0]]:
-            return True, (token[diff_positions[0]], token[diff_positions[1]])
+            return True, token[diff_positions[0]] + token[diff_positions[1]]
         return False, None
 
     @staticmethod
     def _is_insertion(candidate, token):
         for i in range(len(token)):
             if candidate[:i] + candidate[i + 1:] == token:
-                return True, (candidate[i],)
+                return True, candidate[i-1:i+1] if i > 0 else candidate[i:i+2]
         return False, None
 
     @staticmethod
     def _is_deletion(candidate, token):
         for i in range(len(candidate)):
             if token[:i] + token[i + 1:] == candidate:
-                return True, (token[i],)
+                return True, token[i-1:i+1] if i > 0 else token[i:i+2]
         return False, None
 
     @staticmethod
@@ -125,19 +125,12 @@ class Spell_Checker:
             return 1 - sum(self.error_tables['insertion'].values()) - sum(self.error_tables['deletion'].values()) - sum(
                 self.error_tables['substitution'].values()) - sum(self.error_tables['transposition'].values())
 
-    @staticmethod
-    def _generate_candidates(token):
+    def _generate_candidates(self, word):
         """Generate candidate words with edit distance up to 2."""
-        one_edit_candidates = Spell_Checker._generate_one_edit_candidates(token)
-        two_edit_candidates = set()
-        for candidate in one_edit_candidates:
-            two_edit_candidates.update(Spell_Checker._generate_one_edit_candidates(candidate))
-        candidates = one_edit_candidates | two_edit_candidates
-        candidates.add(token)
-        return candidates
+        return self.known([word]) | self.known(self.edits1(word)) | self.known(self.edits2(word)) | {word}
 
     @staticmethod
-    def _generate_one_edit_candidates(token):
+    def edits1(token):
         """Generate candidate words with a single edit operation."""
         letters = 'abcdefghijklmnopqrstuvwxyz'
         splits = [(token[:i], token[i:]) for i in range(len(token) + 1)]
@@ -147,6 +140,13 @@ class Spell_Checker:
         inserts = [L + c + R for L, R in splits for c in letters]
         return set(deletes + transposes + replaces + inserts)
 
+    def known(self, words):
+        "The subset of `words` that appear in the dictionary of WORDS."
+        return set(w for w in words if w in self.lm.token_frequency)
+
+    def edits2(self, word):
+        "All edits that are two edits away from `word`."
+        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
 
     def spell_check(self, text, alpha):
         """ Returns the most probable fix for the specified text. Use a simple

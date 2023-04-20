@@ -172,34 +172,19 @@ class MyTestCase(unittest.TestCase):
         self.assertAlmostEqual(prob, 3 / 16, places=3)
 
     def test_generate_candidates(self):
-        # Define the input token
-        input_token = 'abc'
+        # Test case 1: No errors in the input text
+        self.lm.build_model(self.the_raven)
+        self.sc.add_language_model(self.lm)
+        self.sc.add_error_tables(error_tables)
+        # Test with a known word
+        actual_candidates = self.sc._generate_candidates('hello')
+        self.assertEqual(actual_candidates,
+                         {'hello', 'help'})
+        # Test with an unknown word
+        actual_candidates = self.sc._generate_candidates('helo')
+        self.assertEqual(self.sc._generate_candidates("helo"),
+                         {'help', 'head', 'here', 'he', 'helo', 'hear', 'felt'})
 
-        # Call the _generate_candidates method and store the result
-        result = self.sc._generate_candidates(input_token)
-
-        # Call the other methods and store their results
-        one_edit_insertion = self.sc._insertion_candidates(input_token)
-        one_edit_deletion = self.sc._deletion_candidates(input_token)
-        one_edit_substitution = self.sc._substitution_candidates(input_token)
-        one_edit_transposition = self.sc._transposition_candidates(input_token)
-        one_edit_candidates = one_edit_insertion | one_edit_deletion | one_edit_substitution | one_edit_transposition
-
-        two_edit_candidates = set()
-        for candidate in one_edit_candidates:
-            two_edit_insertion = self.sc._insertion_candidates(candidate)
-            two_edit_deletion = self.sc._deletion_candidates(candidate)
-            two_edit_substitution = self.sc._substitution_candidates(candidate)
-            two_edit_transposition = self.sc._transposition_candidates(candidate)
-
-            # Update the two_edit_candidates set with the new candidates
-            two_edit_candidates.update(
-                two_edit_insertion | two_edit_deletion | two_edit_substitution | two_edit_transposition)
-
-        expected_candidates = one_edit_candidates | two_edit_candidates
-        print(len(expected_candidates))
-
-        self.assertEqual(result, expected_candidates)
 
     def test_spell_check(self):
         # Test case 1: No errors in the input text
