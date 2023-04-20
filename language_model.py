@@ -63,6 +63,105 @@ class Spell_Checker:
         else:
             raise ValueError("Language model not set for this Spell_Checker instance")
 
+    @staticmethod
+    def _is_substitution(candidate, token):
+        diff_positions = [i for i in range(len(token)) if token[i] != candidate[i]]
+        if len(diff_positions) == 1:
+            return True, (token[diff_positions[0]], candidate[diff_positions[0]])
+        return False, None
+
+    @staticmethod
+    def _is_transposition(candidate, token):
+        diff_positions = [i for i in range(len(token)) if token[i] != candidate[i]]
+        if len(diff_positions) == 2 and token[diff_positions[0]] == candidate[diff_positions[1]] and token[
+            diff_positions[1]] == candidate[diff_positions[0]]:
+            return True, (token[diff_positions[0]], token[diff_positions[1]])
+        return False, None
+
+    @staticmethod
+    def _is_insertion(candidate, token):
+        for i in range(len(token)):
+            if candidate[:i] + candidate[i + 1:] == token:
+                return True, (candidate[i],)
+        return False, None
+
+    @staticmethod
+    def _is_deletion(candidate, token):
+        for i in range(len(candidate)):
+            if token[:i] + token[i + 1:] == candidate:
+                return True, (token[i],)
+        return False, None
+
+    @staticmethod
+    def _error_type_and_change(candidate, token):
+        """Determine the type of error between the candidate and the original token."""
+        if len(candidate) == len(token):
+            is_substitution, change = Spell_Checker._is_substitution(candidate, token)
+            if is_substitution:
+                return 'substitution', change
+            is_transposition, change = Spell_Checker._is_transposition(candidate, token)
+            if is_transposition:
+                return 'transposition', change
+        elif len(candidate) == len(token) + 1:
+            is_insertion, change = Spell_Checker._is_insertion(candidate, token)
+            if is_insertion:
+                return 'insertion', change
+        elif len(candidate) == len(token) - 1:
+            is_deletion, change = Spell_Checker._is_deletion(candidate, token)
+            if is_deletion:
+                return 'deletion', change
+        return None, None
+
+    def _probability(self, candidate, token):
+        """Calculate the probability of a candidate given the error model."""
+        error_type, change = self._error_type_and_change(candidate, token)
+        change = ''.join(change)
+
+        if error_type:
+            return self.error_tables[error_type].get(change, 0) / sum(self.error_tables[error_type].values())
+        else:
+            # If the candidate is the same as the original token or the error type cannot be determined, consider the
+            # probability of not making any errors
+            return 1 - sum(self.error_tables['insertion'].values()) - sum(self.error_tables['deletion'].values()) - sum(
+                self.error_tables['substitution'].values()) - sum(self.error_tables['transposition'].values())
+
+    @staticmethod
+    def _generate_candidates(token):
+        """Generate candidate words with edit distance up to 2."""
+        one_edit_candidates = Spell_Checker._generate_one_edit_candidates(token)
+        two_edit_candidates = set()
+        for candidate in one_edit_candidates:
+            two_edit_candidates.update(Spell_Checker._generate_one_edit_candidates(candidate))
+        candidates = one_edit_candidates | two_edit_candidates
+        candidates.add(token)
+        return candidates
+
+    @staticmethod
+    def _generate_one_edit_candidates(token):
+        """Generate candidate words with a single edit operation."""
+        candidates = set()
+        candidates.update(Spell_Checker._insertion_candidates(token))
+        candidates.update(Spell_Checker._deletion_candidates(token))
+        candidates.update(Spell_Checker._substitution_candidates(token))
+        candidates.update(Spell_Checker._transposition_candidates(token))
+        return candidates
+
+    @staticmethod
+    def _insertion_candidates(token):
+        return {token[:i] + c + token[i:] for i in range(len(token) + 1) for c in ALPHABET}
+
+    @staticmethod
+    def _deletion_candidates(token):
+        return {token[:i] + token[i + 1:] for i in range(len(token))}
+
+    @staticmethod
+    def _substitution_candidates(token):
+        return {token[:i] + c + token[i + 1:] for i in range(len(token)) for c in ALPHABET}
+
+    @staticmethod
+    def _transposition_candidates(token):
+        return {token[:i] + token[i + 1] + token[i] + token[i + 2:] for i in range(len(token) - 1)}
+
     def spell_check(self, text, alpha):
         """ Returns the most probable fix for the specified text. Use a simple
             noisy channel model if the number of tokens in the specified text is
@@ -75,6 +174,36 @@ class Spell_Checker:
             Return:
                 A modified string (or a copy of the original if no corrections are made.)
         """
+        # Tokenize the input text
+        tokens = word_tokenize(text)
+
+        # Initialize a list to store the corrected tokens
+        corrected_tokens = []
+
+        # Iterate over each token
+        for token in tokens:
+            # Generate a list of candidate corrections
+            candidates = self._generate_candidates(token)
+
+            # Calculate the probability of each candidate given the language model and the error model
+            probabilities = [self._probability(candidate, token) * self.lm.evaluate_text(candidate) for candidate in
+                             candidates]
+
+            # Choose the candidate with the highest probability
+            candidates = list(candidates)
+            best_candidate = candidates[probabilities.index(max(probabilities))]
+
+            # Replace the token with the chosen candidate if its probability is higher than the original token
+            # multiplied by alpha
+            if max(probabilities) > alpha * self.lm.evaluate_text(token):
+                corrected_tokens.append(best_candidate)
+            else:
+                corrected_tokens.append(token)
+
+        # Join the corrected tokens to form the corrected text
+        corrected_text = ' '.join(corrected_tokens)
+
+        return corrected_text
 
     #####################################################################
     #                   Inner class                                     #
@@ -192,10 +321,13 @@ class Spell_Checker:
                         counts[ngram[-1]] += count
 
                 if counts:
-                    # choose the word with the highest count (MLE)
-                    next_word = max(counts, key=counts.get)
+                    # Calculate the probabilities of the possible next words
+                    probabilities = {word: count / self.total_token_count for word, count in counts.items()}
+
+                    # Sample a word based on their probabilities
+                    words, probs = zip(*probabilities.items())
+                    next_word = random.choices(words, weights=probs, k=1)[0]
                 else:
-                    # if no next words are available, stop generating text
                     break
 
                 output.append(next_word)

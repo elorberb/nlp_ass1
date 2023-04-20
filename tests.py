@@ -12,9 +12,9 @@ class MyTestCase(unittest.TestCase):
         with open('corpus/big.txt', 'r', encoding='utf-8') as file:
             self.big = file.read()
 
-        sc = Spell_Checker()
-        self.lm = sc.Language_Model()
-        self.lm_chars = sc.Language_Model(chars=True)
+        self.sc = Spell_Checker()
+        self.lm = self.sc.Language_Model()
+        self.lm_chars = self.sc.Language_Model(chars=True)
 
     def test_normalize_text(self):
         # Test lowercase
@@ -170,6 +170,106 @@ class MyTestCase(unittest.TestCase):
 
         prob = self.lm.smooth(('quick', 'brown', 'fox'))
         self.assertAlmostEqual(prob, 3 / 16, places=3)
+
+    def test_insertion_candidates(self):
+        token = "a"
+        expected_candidates = {"aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj",
+                               "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "at",
+                               "au", "av", "aw", "ax", "ay", "az",
+                               "ba", "ca", "da", "ea", "fa", "ga", "ha", "ia", "ja", "ka",
+                               "la", "ma", "na", "oa", "pa", "qa", "ra", "sa", "ta", "ua",
+                               "va", "wa", "xa", "ya", "za"}
+        self.assertEqual(self.sc._insertion_candidates(token), expected_candidates)
+
+    def test_deletion_candidates(self):
+        token = "abc"
+        expected_candidates = {"bc", "ac", "ab"}
+        self.assertEqual(self.sc._deletion_candidates(token), expected_candidates)
+
+    def test_substitution_candidates(self):
+        # Define the input token and expected output
+        token = 'a'
+        expected_candidates = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+                               's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
+        self.assertEqual(self.sc._substitution_candidates(token), expected_candidates)
+
+    def test_transposition_candidates(self):
+        # Define the input token and expected output
+        token = 'abcd'
+        expected_candidates = {'bacd', 'acbd', 'abdc'}
+        self.assertEqual(self.sc._transposition_candidates(token), expected_candidates)
+
+    def test_generate_candidates(self):
+        # Define the input token
+        input_token = 'abc'
+
+        # Call the _generate_candidates method and store the result
+        result = self.sc._generate_candidates(input_token)
+
+        # Call the other methods and store their results
+        one_edit_insertion = self.sc._insertion_candidates(input_token)
+        one_edit_deletion = self.sc._deletion_candidates(input_token)
+        one_edit_substitution = self.sc._substitution_candidates(input_token)
+        one_edit_transposition = self.sc._transposition_candidates(input_token)
+        one_edit_candidates = one_edit_insertion | one_edit_deletion | one_edit_substitution | one_edit_transposition
+
+        two_edit_candidates = set()
+        for candidate in one_edit_candidates:
+            two_edit_insertion = self.sc._insertion_candidates(candidate)
+            two_edit_deletion = self.sc._deletion_candidates(candidate)
+            two_edit_substitution = self.sc._substitution_candidates(candidate)
+            two_edit_transposition = self.sc._transposition_candidates(candidate)
+
+            # Update the two_edit_candidates set with the new candidates
+            two_edit_candidates.update(
+                two_edit_insertion | two_edit_deletion | two_edit_substitution | two_edit_transposition)
+
+        expected_candidates = one_edit_candidates | two_edit_candidates
+        print(len(expected_candidates))
+
+        self.assertEqual(result, expected_candidates)
+
+    def test_spell_check(self):
+        # Test case 1: No errors in the input text
+        self.lm.build_model(self.the_raven)
+        self.sc.add_language_model(self.lm)
+        self.sc.add_error_tables(error_tables)
+        input_text = "This is a test."
+        alpha = 0.5
+        expected_output = "This is a test."
+        actual_output = self.sc.spell_check(input_text, alpha)
+        print(actual_output)
+        # self.assertEqual(actual_output, expected_output)
+
+        # Test case 2: Errors in the input text
+        input_text = "Tgis is a tist."
+        expected_output = "This is a test."
+        actual_output = self.sc.spell_check(input_text, alpha)
+        print(actual_output)
+        # self.assertEqual(actual_output, expected_output)
+
+    def test_probability(self):
+        # Define the input tokens and a hypothetical error model
+        candidate = 'apple'
+        token = 'aqple'
+
+        # Update the error model in your object (you may need to adjust the attribute names)
+        self.sc.error_tables = {
+            'insertion': {'a': 0.1, 'p': 0.1, 'l': 0.1, 'e': 0.1},
+            'deletion': {'a': 0.1, 'p': 0.2, 'l': 0.1, 'e': 0.1},
+            'substitution': {'q': 0.1, 'p': 0.1, 'l': 0.1, 'e': 0.1},
+            'transposition': {'pa': 0.1, 'p': 0.1, 'l': 0.1, 'e': 0.1}
+        }
+
+        # Calculate the expected probability based on the error model
+        expected_probability = self.sc.error_tables['substitution'].get('q', 0) / sum(
+            self.sc.error_tables['transposition'].values())
+
+        # Call the _probability method and store the result
+        result = self.sc._probability(candidate, token)
+
+        # Assert that the result matches the expected probability
+        self.assertEqual(result, expected_probability)
 
 
 if __name__ == '__main__':
