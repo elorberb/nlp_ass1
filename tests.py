@@ -185,6 +185,60 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.sc._generate_candidates("helo"),
                          {'help', 'head', 'here', 'he', 'helo', 'hear', 'felt'})
 
+    def test_check_error_type(self):
+        result = Spell_Checker._check_error_type("worda", "word")
+        self.assertEqual(result, "insertion")
+        result = Spell_Checker._check_error_type("wrd", "word")
+        self.assertEqual(result, "deletion")
+        result = Spell_Checker._check_error_type("owrd", "word")
+        self.assertEqual(result, "transposition")
+        result = Spell_Checker._check_error_type("aord", "word")
+        self.assertEqual(result, "substitution")
+
+    def test_insertion_chars(self):
+        token = "worda"
+        candidate = "word"
+        result = Spell_Checker._insertion_chars(token, candidate)
+        self.assertEqual(result, "da")
+
+    def test_deletion_chars(self):
+        token = "acress"
+        candidate = "actress"
+        result = Spell_Checker._deletion_chars(token, candidate)
+        self.assertEqual(result, "ct")
+
+    def test_transposition_chars(self):
+        token = "owrd"
+        candidate = "word"
+        result = Spell_Checker._transposition_chars(token, candidate)
+        self.assertEqual(result, "wo")
+
+    def test_substitution_chars(self):
+        token = "aord"
+        candidate = "word"
+        result = Spell_Checker._substitution_chars(token, candidate)
+        self.assertEqual(result, "aw")
+
+    def test_check_characters_change(self):
+        token = "worda"
+        candidate = "word"
+        result = Spell_Checker._check_characters_change(candidate, token)
+        self.assertEqual(result, "da")
+
+        token = "acress"
+        candidate = "actress"
+        result = Spell_Checker._check_characters_change(candidate, token)
+        self.assertEqual(result, "ct")
+
+        token = "owrd"
+        candidate = "word"
+        result = Spell_Checker._check_characters_change(candidate, token)
+        self.assertEqual(result, "wo")
+
+        token = "aord"
+        candidate = "word"
+        result = Spell_Checker._check_characters_change(candidate, token)
+        self.assertEqual(result, "aw")
 
     def test_spell_check(self):
         # Test case 1: No errors in the input text
@@ -223,7 +277,7 @@ class MyTestCase(unittest.TestCase):
             self.sc.error_tables['transposition'].values())
 
         # Call the _probability method and store the result
-        result = self.sc._probability(candidate, token)
+        result = self.sc.P(candidate, token)
 
         # Assert that the result matches the expected probability
         self.assertEqual(result, expected_probability)

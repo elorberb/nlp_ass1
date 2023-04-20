@@ -64,55 +64,74 @@ class Spell_Checker:
             raise ValueError("Language model not set for this Spell_Checker instance")
 
     @staticmethod
-    def _is_substitution(candidate, token):
-        diff_positions = [i for i in range(len(token)) if token[i] != candidate[i]]
-        if len(diff_positions) == 1:
-            return True, token[diff_positions[0]] + candidate[diff_positions[0]]
-        return False, None
+    def _check_error_type(token, candidate):
+        """
+        Determine the type of error that transforms the token into the candidate.
+        """
+        if len(token) < len(candidate):
+            return "deletion"
+        elif len(token) > len(candidate):
+            return "insertion"
+        else:
+            if sorted(token) == sorted(candidate):
+                return "transposition"
+            else:
+                return "substitution"
 
     @staticmethod
-    def _is_transposition(candidate, token):
-        diff_positions = [i for i in range(len(token)) if token[i] != candidate[i]]
-        if len(diff_positions) == 2 and token[diff_positions[0]] == candidate[diff_positions[1]] and token[
-            diff_positions[1]] == candidate[diff_positions[0]]:
-            return True, token[diff_positions[0]] + token[diff_positions[1]]
-        return False, None
+    def _insertion_chars(token, candidate):
+        """
+        Get a string of 2 characters, represents the insertion error
+        """
+        for i, c in enumerate(candidate):
+            if c != token[i]:
+                return token[i - 1] + token[i]
+        return token[i] + token[i + 1]
 
     @staticmethod
-    def _is_insertion(candidate, token):
-        for i in range(len(token)):
-            if candidate[:i] + candidate[i + 1:] == token:
-                return True, candidate[i-1:i+1] if i > 0 else candidate[i:i+2]
-        return False, None
+    def _deletion_chars(token, candidate):
+        """
+        Get a string of 2 characters, represents the deletion error
+        """
+        for i, t in enumerate(token):
+            if t != candidate[i]:
+                return token[i - 1] + candidate[i]
+        return candidate[i] + candidate[i + 1]
 
     @staticmethod
-    def _is_deletion(candidate, token):
-        for i in range(len(candidate)):
-            if token[:i] + token[i + 1:] == candidate:
-                return True, token[i-1:i+1] if i > 0 else token[i:i+2]
-        return False, None
+    def _transposition_chars(token, candidate):
+        """
+        Get a string of 2 characters, represents the transposition error
+        """
+        for i, t in enumerate(token):
+            if candidate[i] != t:
+                return token[i + 1] + t
 
     @staticmethod
-    def _error_type_and_change(candidate, token):
-        """Determine the type of error between the candidate and the original token."""
-        if len(candidate) == len(token):
-            is_substitution, change = Spell_Checker._is_substitution(candidate, token)
-            if is_substitution:
-                return 'substitution', change
-            is_transposition, change = Spell_Checker._is_transposition(candidate, token)
-            if is_transposition:
-                return 'transposition', change
-        elif len(candidate) == len(token) + 1:
-            is_insertion, change = Spell_Checker._is_insertion(candidate, token)
-            if is_insertion:
-                return 'insertion', change
-        elif len(candidate) == len(token) - 1:
-            is_deletion, change = Spell_Checker._is_deletion(candidate, token)
-            if is_deletion:
-                return 'deletion', change
-        return None, None
+    def _substitution_chars(token, candidate):
+        """
+        Get a string of 2 characters, represents the substitution error
+        """
+        for c, t in zip(candidate, token):
+            if c != t:
+                return t + c
 
-    def _probability(self, candidate, token):
+    @staticmethod
+    def _check_characters_change(candidate, token):
+        """
+        Determine the type of error between the candidate and the original token.
+        Returns the misspelling two characters representing the error.
+        """
+        char_map = {
+            'insertion': Spell_Checker._insertion_chars,
+            'deletion': Spell_Checker._deletion_chars,
+            'transposition': Spell_Checker._transposition_chars,
+            'substitution': Spell_Checker._substitution_chars
+        }
+        error_type = Spell_Checker._check_error_type(token, candidate)
+        return char_map[error_type](token, candidate)
+
+    def P(self, candidate, token):
         """Calculate the probability of a candidate given the error model."""
         error_type, change = self._error_type_and_change(candidate, token)
         change = ''.join(change)
@@ -172,7 +191,7 @@ class Spell_Checker:
             candidates = self._generate_candidates(token)
 
             # Calculate the probability of each candidate given the language model and the error model
-            probabilities = [self._probability(candidate, token) * self.lm.evaluate_text(candidate) for candidate in
+            probabilities = [self.P(candidate, token) * self.lm.evaluate_text(candidate) for candidate in
                              candidates]
 
             # Choose the candidate with the highest probability
