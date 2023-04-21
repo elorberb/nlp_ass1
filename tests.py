@@ -240,6 +240,17 @@ class MyTestCase(unittest.TestCase):
         result = Spell_Checker._check_characters_change(candidate, token)
         self.assertEqual(result, "aw")
 
+    def test_count_change_in_lm(self):
+        text = "the quick brown fox jumped over the lazy dog"
+        self.lm.build_model(text)
+        self.sc.add_language_model(self.lm)
+
+        # Test the function with various inputs
+        self.assertEqual(self.sc.count_change_in_lm("th"), 2)
+        self.assertEqual(self.sc.count_change_in_lm("ox"), 1)
+        self.assertEqual(self.sc.count_change_in_lm("xy"), 0)
+        self.assertEqual(self.sc.count_change_in_lm("he"), 2)
+
     def test_spell_check(self):
         # Test case 1: No errors in the input text
         self.lm.build_model(self.the_raven)

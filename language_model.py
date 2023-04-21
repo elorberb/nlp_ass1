@@ -131,6 +131,15 @@ class Spell_Checker:
         error_type = Spell_Checker._check_error_type(token, candidate)
         return char_map[error_type](token, candidate)
 
+    def count_change_in_lm(self, two_chars):
+        """
+        calculates the number of times an input of two characters occurs in the text.
+        """
+        if not self.lm:
+            raise ValueError("Language model not set for this Spell_Checker instance")
+        else:
+            return sum(count for word, count in self.lm.token_frequency.items() if two_chars in word)
+
     def P(self, candidate, token):
         """Calculate the probability of a candidate given the error model."""
         error_type, change = self._error_type_and_change(candidate, token)
