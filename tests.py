@@ -223,22 +223,22 @@ class MyTestCase(unittest.TestCase):
         token = "worda"
         candidate = "word"
         result = Spell_Checker._check_characters_change(candidate, token)
-        self.assertEqual(result, "da")
+        self.assertEqual(result, ('insertion', 'da'))
 
         token = "acress"
         candidate = "actress"
         result = Spell_Checker._check_characters_change(candidate, token)
-        self.assertEqual(result, "ct")
+        self.assertEqual(result, ('deletion', 'ct'))
 
         token = "owrd"
         candidate = "word"
         result = Spell_Checker._check_characters_change(candidate, token)
-        self.assertEqual(result, "wo")
+        self.assertEqual(result, ('transposition', 'wo'))
 
         token = "aord"
         candidate = "word"
         result = Spell_Checker._check_characters_change(candidate, token)
-        self.assertEqual(result, "aw")
+        self.assertEqual(result, ('substitution', 'aw'))
 
     def test_count_change_in_lm(self):
         text = "the quick brown fox jumped over the lazy dog"
@@ -250,6 +250,39 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.sc.count_change_in_lm("ox"), 1)
         self.assertEqual(self.sc.count_change_in_lm("xy"), 0)
         self.assertEqual(self.sc.count_change_in_lm("he"), 2)
+
+    def test_compute_by_noisy_channel(self):
+        # Test correction of simple sentence
+        tokens = ["acress"]
+        expected_output = "across"
+        self.lm.build_model(self.big)
+        self.sc.add_language_model(self.lm)
+        self.sc.add_error_tables(error_tables)
+        actual_output = self.sc.compute_by_noisy_channel(tokens, alpha=0.000000000000001)
+        self.assertEqual(actual_output, expected_output)
+
+        # Test correction of sentence with punctuation and numbers
+        tokens = ["acress", "2", 'voteers', '.']
+        expected_output = "across 2 votes ."
+        actual_output = self.sc.compute_by_noisy_channel(tokens, alpha=0.00000000000001)
+        self.assertEqual(actual_output, expected_output)
+
+    # def test_compute_by_language_model(self):
+    #     text = "the quiqk brown ofx jumpped over th lazy dog"
+    #     tokens = word_tokenize(text)
+    #     expected_output = "the quick brown fox jumped over th lazy"
+    #     self.lm.build_model(self.big)
+    #     self.sc.add_language_model(self.lm)
+    #     self.sc.add_error_tables(error_tables)
+    #     actual_output = self.sc.compute_by_language_model(text, tokens)
+    #     self.assertEqual(actual_output, expected_output)
+    #
+    #     # Test correction of sentence with punctuation and numbers
+    #     text = "the quiqk brown, ofx jumpped over th lazy dog 2 imes"
+    #     tokens = word_tokenize(text)
+    #     expected_output = "the quick brown, fox jumped over th lazy dog 2 times."
+    #     actual_output = self.sc.compute_by_language_model(text, tokens)
+    #     self.assertEqual(actual_output, expected_output)
 
     def test_spell_check(self):
         # Test case 1: No errors in the input text
@@ -269,29 +302,6 @@ class MyTestCase(unittest.TestCase):
         actual_output = self.sc.spell_check(input_text, alpha)
         print(actual_output)
         # self.assertEqual(actual_output, expected_output)
-
-    def test_probability(self):
-        # Define the input tokens and a hypothetical error model
-        candidate = 'apple'
-        token = 'aqple'
-
-        # Update the error model in your object (you may need to adjust the attribute names)
-        self.sc.error_tables = {
-            'insertion': {'a': 0.1, 'p': 0.1, 'l': 0.1, 'e': 0.1},
-            'deletion': {'a': 0.1, 'p': 0.2, 'l': 0.1, 'e': 0.1},
-            'substitution': {'q': 0.1, 'p': 0.1, 'l': 0.1, 'e': 0.1},
-            'transposition': {'pa': 0.1, 'p': 0.1, 'l': 0.1, 'e': 0.1}
-        }
-
-        # Calculate the expected probability based on the error model
-        expected_probability = self.sc.error_tables['substitution'].get('q', 0) / sum(
-            self.sc.error_tables['transposition'].values())
-
-        # Call the _probability method and store the result
-        result = self.sc.P(candidate, token)
-
-        # Assert that the result matches the expected probability
-        self.assertEqual(result, expected_probability)
 
 
 if __name__ == '__main__':
