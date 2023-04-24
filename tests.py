@@ -97,7 +97,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_generate(self):
         self.lm.build_model(self.the_raven)
-        print(self.lm.generate(n=100))
+        print(self.lm.generate())
 
     def test_generate_chars(self):
         self.lm_chars.build_model(self.the_raven)
@@ -246,10 +246,10 @@ class MyTestCase(unittest.TestCase):
         self.sc.add_language_model(self.lm)
 
         # Test the function with various inputs
-        self.assertEqual(self.sc.count_change_in_lm("th"), 2)
-        self.assertEqual(self.sc.count_change_in_lm("ox"), 1)
-        self.assertEqual(self.sc.count_change_in_lm("xy"), 0)
-        self.assertEqual(self.sc.count_change_in_lm("he"), 2)
+        self.assertEqual(self.sc.count_chars_in_lm("th"), 2)
+        self.assertEqual(self.sc.count_chars_in_lm("ox"), 1)
+        self.assertEqual(self.sc.count_chars_in_lm("xy"), 0)
+        self.assertEqual(self.sc.count_chars_in_lm("he"), 2)
 
     def test_compute_by_noisy_channel(self):
         # Test correction of simple sentence
@@ -267,41 +267,20 @@ class MyTestCase(unittest.TestCase):
         actual_output = self.sc.compute_by_noisy_channel(tokens, alpha=0.00000000000001)
         self.assertEqual(actual_output, expected_output)
 
-    # def test_compute_by_language_model(self):
-    #     text = "the quiqk brown ofx jumpped over th lazy dog"
-    #     tokens = word_tokenize(text)
-    #     expected_output = "the quick brown fox jumped over th lazy"
-    #     self.lm.build_model(self.big)
-    #     self.sc.add_language_model(self.lm)
-    #     self.sc.add_error_tables(error_tables)
-    #     actual_output = self.sc.compute_by_language_model(text, tokens)
-    #     self.assertEqual(actual_output, expected_output)
-    #
-    #     # Test correction of sentence with punctuation and numbers
-    #     text = "the quiqk brown, ofx jumpped over th lazy dog 2 imes"
-    #     tokens = word_tokenize(text)
-    #     expected_output = "the quick brown, fox jumped over th lazy dog 2 times."
-    #     actual_output = self.sc.compute_by_language_model(text, tokens)
-    #     self.assertEqual(actual_output, expected_output)
-
     def test_spell_check(self):
         # Test case 1: No errors in the input text
-        self.lm.build_model(self.the_raven)
+        self.lm.build_model(self.big)
         self.sc.add_language_model(self.lm)
         self.sc.add_error_tables(error_tables)
-        input_text = "This is a test."
-        alpha = 0.5
-        expected_output = "This is a test."
-        actual_output = self.sc.spell_check(input_text, alpha)
+        text = "the quiqk brown ofx jumpped over th lazy dog"
+        alpha = 0.00000005
+        actual_output = self.sc.spell_check(text, alpha)
         print(actual_output)
-        # self.assertEqual(actual_output, expected_output)
 
         # Test case 2: Errors in the input text
-        input_text = "Tgis is a tist."
-        expected_output = "This is a test."
-        actual_output = self.sc.spell_check(input_text, alpha)
+        text = "the quiqk brown, ofx jumpped over th lazy dog 2 imes"
+        actual_output = self.sc.spell_check(text, alpha)
         print(actual_output)
-        # self.assertEqual(actual_output, expected_output)
 
 
 if __name__ == '__main__':

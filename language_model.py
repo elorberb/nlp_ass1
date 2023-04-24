@@ -131,26 +131,34 @@ class Spell_Checker:
         error_type = Spell_Checker._check_error_type(token, candidate)
         return error_type, char_map[error_type](token, candidate)
 
-    def count_change_in_lm(self, two_chars):
+    def count_chars_in_lm(self, two_chars):
         """
-        calculates the number of times an input of two characters occurs in the text.
+        Calculates the number of times an input of two characters occurs in the text.
+        Also returns the number of distinct words in which the input occurs.
         """
         if not self.lm:
             raise ValueError("Language model not set for this Spell_Checker instance")
         else:
-            return sum(count for word, count in self.lm.token_frequency.items() if two_chars in word)
+            count = 0
+            for word, freq in self.lm.token_frequency.items():
+                if two_chars in word:
+                    count += freq
+            return count
 
-    def calculate_log_prob(self, candidate, token):
+    def calculate_log_noisy_channel(self, candidate, token):
         """Calculate the log probability of a candidate given the error table."""
         error_type, error_change = self._check_characters_change(candidate, token)
-        count_error_change = self.count_change_in_lm(error_change)
-        P_x_given_t = self.error_tables[error_type].get(error_change, 0) / count_error_change if count_error_change > 0 else 0
+        count_error_change = self.count_chars_in_lm(error_change)
+        count_error_in_table = self.error_tables[error_type].get(error_change, 0)
+        P_x_given_t = count_error_in_table / count_error_change if count_error_change else 0
         P_t = self.lm.token_frequency[candidate] / self.lm.total_token_count
-        return math.log(P_x_given_t) + math.log(P_t) if P_x_given_t > 0 and P_t > 0 else float('-inf')
+        P_t = P_t if P_t > 0 else 0.0001
+        P_x_given_t = P_x_given_t if P_x_given_t > 0 else 0.0001
+        return math.log(P_x_given_t) + math.log(P_t)
 
     def _generate_candidates(self, word):
         """Generate candidate words with edit distance up to 2."""
-        return self.known([word]) | self.known(self.edits1(word)) | self.known(self.edits2(word)) | {word}
+        return self.known([word]) | self.known(self.edits1(word)) | {word}
 
     @staticmethod
     def edits1(token):
@@ -178,11 +186,10 @@ class Spell_Checker:
         """
         return token in PUNCTUATIONS or token in NUMBERS
 
-    def _get_candidate_scores_by_noisy_channel(self, token, alpha):
+    def _generate_scores_with_noisy_channel(self, token, alpha, candidates):
         """
         Calculates the log probability score for each candidate correction of the given token by the noisy channel.
         """
-        candidates = self._generate_candidates(token)
         candidate_scores = {}
         for candidate in candidates:
             # Use Laplace smoothing with a small value for alpha
@@ -190,55 +197,29 @@ class Spell_Checker:
                 candidate_scores[candidate] = math.log(alpha)
             else:
                 # Calculate log probability of candidate given error tables and language model
-                candidate_scores[candidate] = self.calculate_log_prob(candidate, token)
+                if simple:
+                    candidate_scores[candidate] = self.calculate_log_noisy_channel(candidate, token)
+                else:
+                    equal_prob = (1 - alpha) / len(candidates)
+                    candidate_scores[candidate] = self.calculate_log_noisy_channel(candidate, token) + math.log(
+                        equal_prob)
+
         return candidate_scores
 
-    def compute_by_noisy_channel(self, tokens, alpha):
+    def generate_scores_with_lm(self, candidates, token, alpha):
         """
-        Computes the most likely correction for each token using the noisy channel model.
+           Generate a dictionary of scores for each candidate word in the given list of candidates,
+            based on their frequency in a language model.
         """
-        if not self.lm:
-            raise ValueError("Language model not set for this Spell_Checker instance")
-        elif not self.error_tables:
-            raise ValueError("Error tables not set for this Spell_Checker instance")
-
-        corrected_tokens = []
-        for token in tokens:
-            if self._is_punctuation_or_number(token):
-                corrected_tokens.append(token)
-            else:
-                candidate_scores = self._get_candidate_scores_by_noisy_channel(token, alpha)
-                best_candidate = max(candidate_scores, key=candidate_scores.get)
-                corrected_tokens.append(best_candidate)
-
-        return " ".join(corrected_tokens)
-
-    def _get_candidate_scores_by_lm(self, token, text):
-        """
-        Calculates the log probability score for each candidate correction of the given token by the noisy channel.
-        """
-        candidates = self._generate_candidates(token)
-        candidate_scores = {}
+        candidates_scores = {}
         for candidate in candidates:
-            # Calculate log probability of the candidate_text using the language model
-            candidate_text = text.replace(token, candidate)
-            candidate_scores[candidate] = self.evaluate_text(candidate_text)
-        return candidate_scores
-
-    def compute_by_language_model(self, text, tokens):
-        if not self.lm:
-            raise ValueError("Language model not set for this Spell_Checker instance")
-        corrected_tokens = []
-        for token in tokens:
-            if self._is_punctuation_or_number(token):
-                corrected_tokens.append(token)
+            if candidate == token:
+                candidates_scores[candidate] = max(alpha, self.lm.token_frequency[candidate] / self.lm.total_token_count)
             else:
-                candidate_scores = self._get_candidate_scores_by_lm(token, text)
-                best_candidate = max(candidate_scores, key=candidate_scores.get)
-                corrected_tokens.append(best_candidate)
-        return " ".join(corrected_tokens)
+                candidates_scores[candidate] = self.lm.token_frequency[candidate] / self.lm.total_token_count
+        return candidates_scores
 
-    def spell_check(self, text, alpha):
+    def spell_check(self, text, alpha, normalize=False):
         """ Returns the most probable fix for the specified text. Use a simple
             noisy channel model if the number of tokens in the specified text is
             smaller than the length (n) of the language model.
@@ -250,13 +231,31 @@ class Spell_Checker:
             Return:
                 A modified string (or a copy of the original if no corrections are made.)
         """
+        if normalize:
+            text = normalize_text(text)
         # Tokenize the input text
         tokens = word_tokenize(text)
+        corrected_tokens = []
+        for token in tokens:
+            if self._is_punctuation_or_number(token) or self.known([token]):
+                corrected_tokens.append(token)
+                continue
+            candidates = self.edits1(token)
+            known_candidates = self.known(candidates)
+            candidates_scores = self.generate_scores_with_lm(known_candidates, token, alpha)
+            if candidates_scores:
+                corrected_tokens.append(max(candidates_scores, key=candidates_scores.get))
+                continue
+            known_candidates = self.known(self.edits2(token))
+            candidates_scores = self.generate_scores_with_lm(known_candidates, token, alpha)
+            if candidates_scores:
+                corrected_tokens.append(max(candidates_scores, key=candidates_scores.get))
+            else:
+                candidates_scores = self._generate_scores_with_noisy_channel(token, alpha, known_candidates)
+                corrected_tokens.append(max(candidates_scores, key=candidates_scores.get))
 
-        if len(tokens) < self.lm.n or not all(token in self.lm.token_frequency for token in tokens):
-            return self.compute_by_noisy_channel(tokens, alpha)
-        else:
-            return self.compute_by_language_model(text, tokens)
+        return " ".join(corrected_tokens)
+
 
     #####################################################################
     #                   Inner class                                     #
@@ -424,10 +423,8 @@ class Spell_Checker:
                 words = list(text)
             else:
                 words = text.split()
-
             if self._check_for_oov(words):
                 smooth = True
-
             # Pad the beginning and end of the text with special start and end tokens
             words = ['<s>'] * (self.n - 1) + words + ['</s>']
 
@@ -495,10 +492,6 @@ def normalize_text(text):
     # Remove stop words
     stop_words = set(stopwords.words('english'))
     words = [word for word in words if word not in stop_words]
-
-    # Lemmatize words
-    lemmatizer = WordNetLemmatizer()
-    words = [lemmatizer.lemmatize(word) for word in words]
 
     # Rejoin words into a normalized string
     normalized_text = ' '.join(words)
