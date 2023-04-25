@@ -464,7 +464,7 @@ class Spell_Checker:
 
             # Calculate the smoothed probability using Laplace smoothing
             # Add 1 to the count of the ngram and add the size of the vocabulary
-            prob = (count + 1) / (self.total_token_count + len(self.model_dict))
+            prob = (count + 1) / (sum(self.model_dict.values()) + len(self.model_dict))
 
             return prob
 
