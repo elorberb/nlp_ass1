@@ -282,6 +282,63 @@ class MyTestCase(unittest.TestCase):
         actual_output = self.sc.spell_check(text, alpha)
         print(actual_output)
 
+    def test_correct_spelling(self):
+        test_cases = [
+            ("beutiful", "beautiful"),
+            ("baautiful", "beautiful"),
+            ("bautiful", "beautiful"),
+            ("beutifull", "beautiful"),
+            ("beuatiful", "beautiful"),
+            ("inteligence", "intelligence"),
+            ("intellgence", "intelligence"),
+            ("intelligenc", "intelligence"),
+            ("intellignce", "intelligence"),
+            ("intelliegnce", "intelligence"),
+            ("intelilgence", "intelligence"),
+            ("recomend", "recommend"),
+            ("reccommend", "recommend"),
+            ("reccomend", "recommend"),
+            ("reecommand", "recommend"),
+            ("envirnoment", "environment"),
+            ("environmet", "environment"),
+            ("envronment", "environment"),
+            ("envirnomnt", "environment"),
+            ("enviroonmet", "environment"),
+            ("acess", "access"),
+            ("acount", "account"),
+            ("acomplish", "accomplish"),
+            ("adres", "address"),
+            ("adresable", "addressable"),
+            ("definate", "definite"),
+            ("definitly", "definitely"),
+            ("definitiv", "definitive"),
+            ("recive", "receive"),
+            ("recived", "received"),
+            ("recieving", "receiving"),
+        ]
+        self.lm.build_model(self.big)
+        self.sc.add_language_model(self.lm)
+        self.sc.add_error_tables(error_tables)
+        alpha = 0.00000005
+        total_cases = len(test_cases)
+        correct_cases = []
+        wrong_cases = []
+
+        for misspelled, correct in test_cases:
+            result = self.sc.spell_check(misspelled, alpha)
+            if result == correct:
+                correct_cases.append((misspelled, correct, result))
+            else:
+                wrong_cases.append((misspelled, correct, result))
+        correct_words_ratio = len(correct_cases) / total_cases
+        print(f"Correct words ratio: {correct_words_ratio}\n")
+        print("Correct cases:")
+        for misspelled, correct, result in correct_cases:
+            print(f"Misspelled: {misspelled}, Correct: {correct}, Result: {result}")
+        print("\nWrong cases:")
+        for misspelled, correct, result in wrong_cases:
+            print(f"Misspelled: {misspelled}, Correct: {correct}, Result: {result}")
+
 
 if __name__ == '__main__':
     unittest.main()
