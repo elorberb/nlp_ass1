@@ -389,6 +389,10 @@ class Spell_Checker:
                 output.append(next_word)
                 context = context[1:] + (next_word,)
 
+            # Check if the last token in the output is '</s>' and remove it if necessary
+            if output[-1] == '</s>':
+                output.pop()
+
             # return the generated text as a string
             if self.chars:
                 return ''.join(output)
