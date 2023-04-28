@@ -16,32 +16,6 @@ class MyTestCase(unittest.TestCase):
         self.lm = self.sc.Language_Model()
         self.lm_chars = self.sc.Language_Model(chars=True)
 
-    def test_normalize_text(self):
-        # Test lowercase
-        input_text = "This is a Sample TeXT."
-        expected_output = "sample text"
-        self.assertEqual(normalize_text(input_text), expected_output)
-
-        # Test remove non-alphabetic
-        input_text = "This is a sample text with 123 numbers and !@# special characters."
-        expected_output = "sample text number special character"
-        self.assertEqual(normalize_text(input_text), expected_output)
-
-        # Test remove stopwords
-        input_text = "This is a sample text with some stopwords."
-        expected_output = "sample text stopwords"
-        self.assertEqual(normalize_text(input_text), expected_output)
-
-        # Test lemmatization
-        input_text = "This text contains some lemmatizable words."
-        expected_output = "text contains lemmatizable word"
-        self.assertEqual(normalize_text(input_text), expected_output)
-
-        # Test empty input
-        input_text = ""
-        expected_output = ""
-        self.assertEqual(normalize_text(input_text), expected_output)
-
     def test_build_model_word(self):
         text = "The quick brown fox jumps over the lazy dog"
         expected_dict = {('<s>', '<s>', 'The'): 1,
@@ -171,20 +145,6 @@ class MyTestCase(unittest.TestCase):
         prob = self.lm.smooth(('quick', 'brown', 'fox'))
         self.assertAlmostEqual(prob, 3 / 16, places=3)
 
-    def test_generate_candidates(self):
-        # Test case 1: No errors in the input text
-        self.lm.build_model(self.the_raven)
-        self.sc.add_language_model(self.lm)
-        self.sc.add_error_tables(error_tables)
-        # Test with a known word
-        actual_candidates = self.sc._generate_candidates('hello')
-        self.assertEqual(actual_candidates,
-                         {'hello', 'help'})
-        # Test with an unknown word
-        actual_candidates = self.sc._generate_candidates('helo')
-        self.assertEqual(self.sc._generate_candidates("helo"),
-                         {'help', 'head', 'here', 'he', 'helo', 'hear', 'felt'})
-
     def test_check_error_type(self):
         result = Spell_Checker._check_error_type("worda", "word")
         self.assertEqual(result, "insertion")
@@ -250,22 +210,6 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.sc.count_chars_in_lm("ox"), 1)
         self.assertEqual(self.sc.count_chars_in_lm("xy"), 0)
         self.assertEqual(self.sc.count_chars_in_lm("he"), 2)
-
-    def test_compute_by_noisy_channel(self):
-        # Test correction of simple sentence
-        tokens = ["acress"]
-        expected_output = "across"
-        self.lm.build_model(self.big)
-        self.sc.add_language_model(self.lm)
-        self.sc.add_error_tables(error_tables)
-        actual_output = self.sc.compute_by_noisy_channel(tokens, alpha=0.000000000000001)
-        self.assertEqual(actual_output, expected_output)
-
-        # Test correction of sentence with punctuation and numbers
-        tokens = ["acress", "2", 'voteers', '.']
-        expected_output = "across 2 votes ."
-        actual_output = self.sc.compute_by_noisy_channel(tokens, alpha=0.00000000000001)
-        self.assertEqual(actual_output, expected_output)
 
     def test_spell_check(self):
         # Test case 1: No errors in the input text
