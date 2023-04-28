@@ -393,6 +393,10 @@ class Spell_Checker:
             if output[-1] == '</s>':
                 output.pop()
 
+            # Remove all occurrences of the '<s>' token at the beginning of the output
+            while output and output[0] == '<s>':
+                output.pop(0)
+
             # return the generated text as a string
             if self.chars:
                 return ''.join(output)
