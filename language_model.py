@@ -252,7 +252,10 @@ class Spell_Checker:
                 corrected_tokens.append(max(candidates_scores, key=candidates_scores.get))
             else:
                 candidates_scores = self._generate_scores_with_noisy_channel(token, alpha, known_candidates)
-                corrected_tokens.append(max(candidates_scores, key=candidates_scores.get))
+                if not candidates_scores:
+                    corrected_tokens.append(token)
+                else:
+                    corrected_tokens.append(max(candidates_scores, key=candidates_scores.get))
 
         return " ".join(corrected_tokens)
 

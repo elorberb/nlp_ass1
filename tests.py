@@ -339,6 +339,51 @@ class MyTestCase(unittest.TestCase):
         for misspelled, correct, result in wrong_cases:
             print(f"Misspelled: {misspelled}, Correct: {correct}, Result: {result}")
 
+    def test_correct_spelling_sentences(self):
+        test_cases = [
+            ("The beutiful gareden was blooming with flowers.", "The beautiful garden was blooming with flowers."),
+            ("He had a baautiful colletion of old coins.", "He had a beautiful collection of old coins."),
+            ("Her inteligence and wit made her a great conversationalist.",
+             "Her intelligence and wit made her a great conversationalist."),
+            ("Please recomend a good book for learning programming.",
+             "Please recommend a good book for learning programming."),
+            ("We should protect our envirnoment for future generations.",
+             "We should protect our environment for future generations."),
+            ("Can I acess the files from my computer?", "Can I access the files from my computer?"),
+            ("How do I update my acount information?", "How do I update my account information?"),
+            ("We must acomplish our goals to succeed.", "We must accomplish our goals to succeed."),
+            ("Please enter your adres in the form.", "Please enter your address in the form."),
+            ("Is your email adresable?", "Is your email addressable?"),
+            ("The definate answer is yet to be determined.", "The definite answer is yet to be determined."),
+            ("I will definitly come to the party.", "I will definitely come to the party."),
+            ("That is a definitiv statement.", "That is a definitive statement."),
+            ("Did you recive my email?", "Did you receive my email?"),
+            ("I recived your package.", "I received your package."),
+            ("She is recieving the award tomorrow.", "She is receiving the award tomorrow."),
+        ]
+        self.lm.build_model(self.big)
+        self.sc.add_language_model(self.lm)
+        self.sc.add_error_tables(error_tables)
+        alpha = 0.00000005
+        total_cases = len(test_cases)
+        correct_cases = []
+        wrong_cases = []
+
+        for misspelled, correct in test_cases:
+            result = self.sc.spell_check(misspelled, alpha)
+            if word_tokenize(result) == word_tokenize(correct):
+                correct_cases.append((misspelled, correct, result))
+            else:
+                wrong_cases.append((misspelled, correct, result))
+        correct_sentences_ratio = len(correct_cases) / total_cases
+        print(f"Correct sentences ratio: {correct_sentences_ratio}\n")
+        print("Correct cases:")
+        for misspelled, correct, result in correct_cases:
+            print(f"Misspelled: {misspelled}, Correct: {correct}, Result: {result}")
+        print("\nWrong cases:")
+        for misspelled, correct, result in wrong_cases:
+            print(f"Misspelled: {misspelled}, Correct: {correct}, Result: {result}")
+
 
 if __name__ == '__main__':
     unittest.main()
